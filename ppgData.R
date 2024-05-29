@@ -10,7 +10,7 @@ library(dplyr)
 data <- read.csv('play_by_play_2023.csv')
 
 # Manipulations to find post season PPG
-nfl <- data |> filter(season_type == 'POST') |>
+ppgPlayoffs <- data |> filter(season_type == 'POST') |>
     group_by(game_id) |>
     summarise(home = home_team,
               away = away_team,
@@ -18,7 +18,7 @@ nfl <- data |> filter(season_type == 'POST') |>
               awayScore = max(total_away_score )) |>
     distinct(game_id, home, away, homeScore, awayScore) |>
     pivot_longer(cols = c(home, away),
-                 values_to = 'values',
+                 values_to = 'team',
                  names_to = 'names') |>
     mutate(h = case_when(names == 'home' ~ 1,
                          names == 'away' ~ 0),
@@ -28,7 +28,7 @@ nfl <- data |> filter(season_type == 'POST') |>
            aScore = awayScore * a,
            totScore = hScore + aScore) |>
 
-    group_by(values) |>
+    group_by(team) |>
     summarise(nGames = n(),
               points = sum(totScore)) |>
     mutate(perGame = points / nGames)
@@ -98,7 +98,10 @@ secondAway <- ski |> filter(game_half == 'Half2') |>
 
 df <- rbind(firstAway, firstHome, secondAway, secondHome)
 
-df <- df |> group_by(team) |>
+warningTimeoutsPlayoffs <- df |> group_by(team) |>
     summarise(totalTimeouts = sum(totTimeouts),
               nHalves = sum(n)/4) |>
     mutate(avgTimeouts = round((totalTimeouts / nHalves), 2))
+
+write.csv(ppgPlayoffs, 'ppgPlayoffs.csv')
+write.csv(warningTimeoutsPlayoffs, 'warningTimeoutsPlayoffs.csv')
