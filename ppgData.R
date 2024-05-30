@@ -31,7 +31,7 @@ ppgPlayoffs <- data |> filter(season_type == 'POST') |>
     group_by(team) |>
     summarise(nGames = n(),
               points = sum(totScore)) |>
-    mutate(perGame = points / nGames)
+    mutate(perGame = round((points / nGames), digits = 2))
 
 ski <- data |> filter(season_type == 'POST',
                       half_seconds_remaining <= 120) |>
@@ -100,8 +100,46 @@ df <- rbind(firstAway, firstHome, secondAway, secondHome)
 
 warningTimeoutsPlayoffs <- df |> group_by(team) |>
     summarise(totalTimeouts = sum(totTimeouts),
-              nHalves = sum(n)/4) |>
-    mutate(avgTimeouts = round((totalTimeouts / nHalves), 2))
+              nHalves = sum(n)/2) |>
+    mutate(avgTimeouts = round((totalTimeouts / nHalves), 2)) |>
+    select(team, avgTimeouts)
+
+
+
+
+trdh <- data |> filter(season_type == 'POST',
+                            down == 3,
+                            c(play_type == 'pass' | play_type == 'run' ))|>
+    select(play_type, game_id, away_team, home_team, third_down_converted, third_down_failed) |>
+    group_by(home_team) |>
+    summarise(n = n(),
+              conv = sum(third_down_converted),
+              fail = sum(third_down_failed)) |>
+    mutate(convRate = conv / n) |>
+    rename(team = home_team)
+
+trda <- data |> filter(season_type == 'POST',
+                       down == 3,
+                       c(play_type == 'pass' | play_type == 'run' ))|>
+    select(play_type, game_id, away_team, home_team, third_down_converted, third_down_failed) |>
+    group_by(away_team) |>
+    summarise(n = n(),
+              conv = sum(third_down_converted),
+              fail = sum(third_down_failed)) |>
+    mutate(convRate = conv / n) |>
+    rename(team = away_team)
+
+df3 <- rbind(trdh, trda)
+
+thirdDownConversionRate <- df3 |> group_by(team) |>
+    summarize(conversionRate = round((sum(conv) / sum(n)), digits = 2))
 
 write.csv(ppgPlayoffs, 'ppgPlayoffs.csv')
 write.csv(warningTimeoutsPlayoffs, 'warningTimeoutsPlayoffs.csv')
+write.csv(thirdDownConversionRate, 'thirdDownConversionRate.csv')
+
+#Creating Final Data Set----
+playoffData <- ppgPlayoffs |> right_join(warningTimeoutsPlayoffs, by = 'team') |>
+    right_join(thirdDownConversionRate, by = 'team')
+
+write.csv(playoffData, 'playoffData.csv')
