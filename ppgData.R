@@ -33,6 +33,9 @@ ppgPlayoffs <- data |> filter(season_type == 'POST') |>
               points = sum(totScore)) |>
     mutate(perGame = round((points / nGames), digits = 2))
 
+#Statistics of Interest----
+
+##Two Minute Warning Timeouts Left----
 ski <- data |> filter(season_type == 'POST',
                       half_seconds_remaining <= 120) |>
     filter(half_seconds_remaining >= 118) |>
@@ -104,8 +107,7 @@ warningTimeoutsPlayoffs <- df |> group_by(team) |>
     mutate(avgTimeouts = round((totalTimeouts / nHalves), 2)) |>
     select(team, avgTimeouts)
 
-
-
+##Third Down Conversion Rate----
 
 trdh <- data |> filter(season_type == 'POST',
                             down == 3,
@@ -138,8 +140,40 @@ write.csv(ppgPlayoffs, 'ppgPlayoffs.csv')
 write.csv(warningTimeoutsPlayoffs, 'warningTimeoutsPlayoffs.csv')
 write.csv(thirdDownConversionRate, 'thirdDownConversionRate.csv')
 
+##Red Zone Efficiency----
+
+redZone <- data |> filter(season_type == 'POST',
+                          drive_inside20 == 1,
+                          posteam != '') |>
+    select(game_id, home_team, away_team, drive, drive_ended_with_score, drive_end_transition, posteam) |>
+    distinct(game_id, posteam, drive, .keep_all = TRUE) |>
+    mutate(td = case_when(drive_end_transition == 'TOUCHDOWN' ~ 1,
+                          drive_end_transition != 'TOUCHDOWN' ~0)) |>
+    group_by(posteam) |>
+    summarise(nDrives = n(),
+              tds = sum(td)) |>
+    mutate(efficiency = round(tds / nDrives, digits = 3)) |>
+    select(posteam, efficiency) |>
+    rename(team = posteam)
+
+##Fourth Down Attempts----
+fourthDown <- data |> filter(season_type == 'POST',
+                             down == 4,
+                             play_type != 'no_play') |>
+    group_by(posteam) |>
+    summarize(conv = sum(fourth_down_converted),
+              fail = sum(fourth_down_failed),
+              fg = sum(field_goal_attempt),
+              pun = sum(punt_attempt),
+              n = n()) |>
+    mutate(fourthAttemptedPercentage = round(((conv + fail) / n), digits = 3)) |>
+    rename(team = posteam) |>
+    select(team, fourthAttemptedPercentage)
+
 #Creating Final Data Set----
 playoffData <- ppgPlayoffs |> right_join(warningTimeoutsPlayoffs, by = 'team') |>
-    right_join(thirdDownConversionRate, by = 'team')
+    right_join(thirdDownConversionRate, by = 'team') |>
+    right_join(redZone, by = 'team') |>
+    right_join(fourthDown, by = 'team')
 
 write.csv(playoffData, 'playoffData.csv')

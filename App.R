@@ -1,6 +1,7 @@
 # Important packages to Load
 library(shinythemes)
 library(shiny)
+library(ggplot2)
 
 # Read in Datasets
 
@@ -37,7 +38,9 @@ ui <- fluidPage(theme = shinytheme('darkly'),
                                         tags$label(h3('Data to compare:')),
                                         selectInput('stat', label = 'Statistic:',
                                                     choices = list('Third Down Conversion Rate' = 'conversionRate',
-                                                                   'Average Timeouts at Two Minute Warning' = 'avgTimeouts')),
+                                                                   'Average Timeouts at Two Minute Warning' = 'avgTimeouts',
+                                                                   'Red Zone Efficiency' = 'efficiency',
+                                                                   'Percent of Fourth Downs Attempted' = 'fourthAttemptedPercentage')),
                                         actionButton('submitbutton', 'Submit',
                                                      class = 'btn btn-primary')
                                     ), # Side Bar Panel
@@ -53,7 +56,7 @@ ui <- fluidPage(theme = shinytheme('darkly'),
 ) # fluid Page
 
 #Define Server Function
-server <- function(input, output) {
+server <- function(input, output, session) {
 
     output$contents <- renderPrint({
         if (input$submitbutton > 0) {
@@ -65,26 +68,60 @@ server <- function(input, output) {
 
     output$txtout <- renderText({
         paste(input$txt1, input$txt2, sep = ' ')
-        }) # render Text
+    }) # render Text
 
-    output$dataplot <- renderPlot({
+    datasetInput <- reactive({
 
         if(input$submitbutton > 0) {
 
             if (input$stat == 'conversionRate') {
 
-                x <- playoffData$conversionRate
-                y <- playoffData$perGame
-                plot(x,y)
+                df <- data.frame(x = playoffData$conversionRate,
+                                 y = playoffData$perGame,
+                                 team = playoffData$team)
+                print(df)
+                df
+
+            } else if (input$stat == 'avgTimeouts') {
+
+                df <- data.frame(x = playoffData$avgTimeouts,
+                                 y = playoffData$perGame,
+                                 team = playoffData$team)
+                print(df)
+                df
+
+            } else if (input$stat == 'efficiency'){
+
+                df <- data.frame(x = playoffData$efficiency,
+                                 y = playoffData$perGame,
+                                 team = playoffData$team)
+                print(df)
+                df
 
             } else {
 
-                x <- playoffData$avgTimeouts
-                y <- playoffData$perGame
-                plot(x,y)
+                df <- data.frame(x = playoffData$fourthAttemptedPercentage,
+                                 y = playoffData$perGame,
+                                 team = playoffData$team)
+                print(df)
+                df
 
             }
         } #Submit
+
+        print(df)
+        df
+
+    }) # Data Set Input
+
+    output$dataplot <- renderPlot({
+
+        ggplot(data = datasetInput(), aes(x = x,
+                                          y = y,
+                                          color = 'royalblue',
+                                          label = team,
+                                          ylab = 'Points Per Game')) +
+            geom_point() + geom_text(hjust = -0.5, vjust = -0.5)
     }) #Render Plot
 } # Server function
 
