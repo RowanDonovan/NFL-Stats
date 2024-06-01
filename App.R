@@ -1,13 +1,13 @@
-# Important packages to Load
+# Important packages to Load----
 library(shinythemes)
 library(shiny)
 library(ggplot2)
 
-# Read in Datasets
+# Read in Datasets----
 
 playoffData <- read.csv('playoffData.csv')
 
-
+#User Interface----
 ui <- fluidPage(theme = shinytheme('darkly'),
 
                 navbarPage('NFL Statistics Hub',
@@ -40,7 +40,8 @@ ui <- fluidPage(theme = shinytheme('darkly'),
                                                     choices = list('Third Down Conversion Rate' = 'conversionRate',
                                                                    'Average Timeouts at Two Minute Warning' = 'avgTimeouts',
                                                                    'Red Zone Efficiency' = 'efficiency',
-                                                                   'Percent of Fourth Downs Attempted' = 'fourthAttemptedPercentage')),
+                                                                   'Percent of Fourth Downs Attempted' = 'fourthAttemptedPercentage',
+                                                                   'Points Allowed per Game' = 'avgAllowed')),
                                         actionButton('submitbutton', 'Submit',
                                                      class = 'btn btn-primary')
                                     ), # Side Bar Panel
@@ -55,7 +56,7 @@ ui <- fluidPage(theme = shinytheme('darkly'),
                 ) #nav Bar Page
 ) # fluid Page
 
-#Define Server Function
+#Define Server Function----
 server <- function(input, output, session) {
 
     output$contents <- renderPrint({
@@ -98,7 +99,7 @@ server <- function(input, output, session) {
                 print(df)
                 df
 
-            } else {
+            } else if (input$stat == 'fourth Attempted percentage') {
 
                 df <- data.frame(x = playoffData$fourthAttemptedPercentage,
                                  y = playoffData$perGame,
@@ -106,6 +107,13 @@ server <- function(input, output, session) {
                 print(df)
                 df
 
+            } else {
+
+                df <- data.frame(x = playoffData$avgAllowed,
+                                 y = playoffData$perGame,
+                                 team = playoffData$team)
+                print(df)
+                df
             }
         } #Submit
 
@@ -118,12 +126,15 @@ server <- function(input, output, session) {
 
         ggplot(data = datasetInput(), aes(x = x,
                                           y = y,
-                                          color = 'royalblue',
-                                          label = team,
-                                          ylab = 'Points Per Game')) +
-            geom_point() + geom_text(hjust = -0.5, vjust = -0.5)
+                                          label = team)) +
+            geom_point(color = 'deeppink',
+                       size = 4) +
+            geom_text(hjust = -0.5, vjust = -0.5) +
+            labs(title = 'Playoff Points Per Game vs Selected Statistic',
+                 x = 'Selected Statistic',
+                 y = 'Points Per Game')
     }) #Render Plot
 } # Server function
 
-#Create Shiny App
+#Create Shiny App----
 shinyApp(ui = ui, server = server)

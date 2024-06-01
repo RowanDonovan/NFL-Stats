@@ -2,14 +2,14 @@
 # Data Manipulations #
 ######################
 
-# Important Packages to Load
+# Important Packages to Load----
 library(tidyr)
 library(dplyr)
 
-# Read in Data
+# Read in Data----
 data <- read.csv('play_by_play_2023.csv')
 
-# Manipulations to find post season PPG
+# Manipulations to find post season PPG----
 ppgPlayoffs <- data |> filter(season_type == 'POST') |>
     group_by(game_id) |>
     summarise(home = home_team,
@@ -156,6 +156,12 @@ redZone <- data |> filter(season_type == 'POST',
     select(posteam, efficiency) |>
     rename(team = posteam)
 
+miaData <- data.frame(team = 'MIA',
+                      efficiency = 0)
+
+redZone <- rbind(redZone, miaData)
+
+redZone <- redZone |> arrange(team)
 ##Fourth Down Attempts----
 fourthDown <- data |> filter(season_type == 'POST',
                              down == 4,
@@ -170,10 +176,36 @@ fourthDown <- data |> filter(season_type == 'POST',
     rename(team = posteam) |>
     select(team, fourthAttemptedPercentage)
 
+##Points allowed Per Game----
+hAllowed <- data|> filter(season_type == 'POST',
+                         desc == 'END GAME') |>
+    select(game_id, home_team, away_team, home_score, away_score) |>
+    group_by(home_team) |>
+    summarise(allowed = sum(away_score),
+              n = n()) |>
+    rename(team = home_team)
+
+aAllowed <- data|> filter(season_type == 'POST',
+                          desc == 'END GAME') |>
+    select(game_id, home_team, away_team, home_score, away_score) |>
+    group_by(away_team) |>
+    summarise(allowed = sum(home_score),
+              n = n()) |>
+    rename(team = away_team)
+
+allowed <- rbind(hAllowed, aAllowed)
+
+allowed <- allowed |> group_by(team) |>
+    summarise(pointsAllowed = sum(allowed),
+              nGames = sum(n)) |>
+    mutate(avgAllowed = round((pointsAllowed / nGames), digits = 3)) |>
+    select(team, avgAllowed)
+
 #Creating Final Data Set----
 playoffData <- ppgPlayoffs |> right_join(warningTimeoutsPlayoffs, by = 'team') |>
     right_join(thirdDownConversionRate, by = 'team') |>
     right_join(redZone, by = 'team') |>
-    right_join(fourthDown, by = 'team')
+    right_join(fourthDown, by = 'team') |>
+    right_join(allowed, by = 'team')
 
 write.csv(playoffData, 'playoffData.csv')
