@@ -162,7 +162,9 @@ miaData <- data.frame(team = 'MIA',
 redZone <- rbind(redZone, miaData)
 
 redZone <- redZone |> arrange(team)
+
 ##Fourth Down Attempts----
+
 fourthDown <- data |> filter(season_type == 'POST',
                              down == 4,
                              play_type != 'no_play') |>
